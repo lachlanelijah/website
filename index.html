@@ -49,11 +49,70 @@
         <li><a href="mailto:lachlan@atack.dev">Email</a></li>
       </ul>
     </section>
+    
+    <section id="rym" class="rym">
+      <h2>&gt; Latest RYM Ratings</h2>
+      <div id="rym-container" class="rym-container">Loading recent ratings...</div>
+      <div class="metadata">Source: <a class="external" href="https://rateyourmusic.com/~lachlanelijah/data/rss">rateyourmusic.com/~lachlanelijah/data/rss</a></div>
+    </section>
 
     <footer>
       <div class="metadata">“For what I received I passed on to you as of first importance: that Christ died for our sins according to the Scriptures, that he was buried, that he was raised on the third day according to the Scriptures”</div>
       <div class="metadata"><span class="kbd">1 Corinthians 15:3–4</span></div>
     </footer>
   </main>
+  <script>
+    // Fetch and render the most recent 3 items from RYM RSS
+    async function loadRYM(){
+      const feedUrl = 'https://rateyourmusic.com/~lachlanelijah/data/rss';
+      const container = document.getElementById('rym-container');
+      try{
+        const res = await fetch(feedUrl);
+        if(!res.ok) throw new Error('Network response not ok');
+        const text = await res.text();
+        const doc = new DOMParser().parseFromString(text, 'application/xml');
+        const items = Array.from(doc.querySelectorAll('item')).slice(0,3);
+        if(items.length === 0) { container.textContent = 'No recent ratings found.'; return }
+        container.innerHTML = '';
+        items.forEach(it => {
+          const title = (it.querySelector('title') && it.querySelector('title').textContent) || '';
+          const link = (it.querySelector('link') && it.querySelector('link').textContent) || (it.querySelector('guid') && it.querySelector('guid').textContent) || '#';
+          // Example title: "Rated Twilight Zone by Multiple Artists 3.0 stars"
+          const m = title.match(/Rated\s+(.+?)\s+by\s+(.+?)\s+(\d+(?:\.\d)?)\s*stars/i);
+          let album = title; let artist = ''; let rating = '';
+          if(m){ album = m[1]; artist = m[2]; rating = m[3]; }
+
+          const itemEl = document.createElement('div'); itemEl.className = 'rym-item';
+          const a = document.createElement('a'); a.href = link; a.textContent = album; a.target = '_blank'; a.rel = 'noopener noreferrer';
+          const meta = document.createElement('div'); meta.className = 'rym-meta'; meta.textContent = artist;
+          const stars = document.createElement('div'); stars.className = 'rym-stars';
+          stars.innerHTML = renderStars(rating) + (rating? (' <span style="color:var(--muted);font-weight:600; margin-left:6px">'+rating+'★</span>') : '');
+
+          const left = document.createElement('div'); left.style.display = 'flex'; left.style.flexDirection = 'column'; left.appendChild(a); if(artist) left.appendChild(meta);
+          itemEl.appendChild(left);
+          itemEl.appendChild(stars);
+          container.appendChild(itemEl);
+        });
+      }catch(err){
+        container.innerHTML = '<div class="rym-error">Unable to load RYM feed (CORS or network error).</div>';
+        console.error(err);
+      }
+    }
+
+    function renderStars(rating){
+      if(!rating) return '';
+      const n = parseFloat(rating);
+      if(isNaN(n)) return '';
+      const full = Math.floor(n);
+      const half = (n - full) >= 0.5;
+      let s = '';
+      for(let i=0;i<full;i++) s += '★';
+      if(half) s += '☆';
+      for(let i=full + (half?1:0); i<5; i++) s += '☆';
+      return s;
+    }
+
+    window.addEventListener('DOMContentLoaded', loadRYM);
+  </script>
 </body>
 </html>
