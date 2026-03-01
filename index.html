@@ -50,11 +50,77 @@
       </ul>
     </section>
     
+    <section id="letterboxd" class="lb">
+      <h2>&gt; Latest Letterboxd Activity</h2>
+      <div id="lb-container" class="lb-container">Loading recent movies...</div>
+      <div class="metadata">Source: <a class="external" href="https://letterboxd.com/lachlanelijah/rss/">letterboxd.com/lachlanelijah/rss</a></div>
+    </section>
+    
     <footer>
       <div class="metadata">“For what I received I passed on to you as of first importance: that Christ died for our sins according to the Scriptures, that he was buried, that he was raised on the third day according to the Scriptures”</div>
       <div class="metadata"><span class="kbd">1 Corinthians 15:3–4</span></div>
     </footer>
   </main>
   <!-- RYM integration removed -->
+  <script>
+    // Fetch Letterboxd RSS and show most recent 3 entries with any found rating.
+    async function loadLB(){
+      const feedUrl = 'https://letterboxd.com/lachlanelijah/rss/';
+      const container = document.getElementById('lb-container');
+      try{
+        const res = await fetch(feedUrl);
+        if(!res.ok) throw new Error('Network response not ok');
+        const text = await res.text();
+        const doc = new DOMParser().parseFromString(text, 'application/xml');
+        const items = Array.from(doc.querySelectorAll('item')).slice(0,3);
+        if(items.length === 0){ container.textContent = 'No recent activity found.'; return }
+        container.innerHTML = '';
+        items.forEach(it => {
+          const title = (it.querySelector('title') && it.querySelector('title').textContent) || '';
+          // title often like "Movie Title (Year)" or may include review/rating info
+          const link = (it.querySelector('link') && it.querySelector('link').textContent) || '#';
+          const description = (it.querySelector('description') && it.querySelector('description').textContent) || '';
+          const rating = extractLBRating(title + '\n' + description);
+
+          const itemEl = document.createElement('div'); itemEl.className = 'lb-item';
+          const a = document.createElement('a'); a.href = link; a.textContent = title; a.target = '_blank'; a.rel = 'noopener noreferrer';
+          const meta = document.createElement('div'); meta.className = 'lb-meta'; meta.textContent = new Date((it.querySelector('pubDate')||{}).textContent || '').toLocaleDateString();
+          const left = document.createElement('div'); left.style.display='flex'; left.style.flexDirection='column'; left.appendChild(a); left.appendChild(meta);
+          const ratingEl = document.createElement('div'); ratingEl.className = 'lb-rating'; ratingEl.innerHTML = rating ? (renderStars(rating) + ' <span style="color:var(--muted);font-weight:600">'+rating+'/5</span>') : '';
+          itemEl.appendChild(left); itemEl.appendChild(ratingEl);
+          container.appendChild(itemEl);
+        });
+      }catch(err){
+        container.innerHTML = '<div class="lb-error">Unable to load Letterboxd feed (CORS or network error).</div>';
+        console.error(err);
+      }
+    }
+
+    function extractLBRating(text){
+      if(!text) return '';
+      // try patterns: "3.5/5", "3.5/ 5", "3.5 out of 5", "★3.5" or "Rating: 3.5"
+      const patterns = [/(\d(?:\.\d)?)\s*\/\s*5/, /(\d(?:\.\d)?)\s*out of\s*5/i, /★\s*(\d(?:\.\d)?)/, /Rating[:\s]+(\d(?:\.\d)?)/i, /(\d(?:\.\d)?)\s*stars/i];
+      for(const p of patterns){
+        const m = text.match(p);
+        if(m) return m[1];
+      }
+      return '';
+    }
+
+    function renderStars(rating){
+      if(!rating) return '';
+      const n = parseFloat(rating);
+      if(isNaN(n)) return '';
+      const full = Math.floor(n);
+      const half = (n - full) >= 0.5;
+      let s = '';
+      for(let i=0;i<full;i++) s += '★';
+      if(half) s += '☆';
+      for(let i=full + (half?1:0); i<5; i++) s += '☆';
+      return s;
+    }
+
+    window.addEventListener('DOMContentLoaded', loadLB);
+  </script>
 </body>
 </html>
