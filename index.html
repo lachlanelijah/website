@@ -62,32 +62,47 @@
     </footer>
   </main>
   <script>
-    // Fetch and render the most recent 3 items from RYM RSS
+    // Try to load local rym.json first (no CORS). Falls back to public RSS (may hit CORS).
     async function loadRYM(){
+      const localUrl = '/rym.json';
       const feedUrl = 'https://rateyourmusic.com/~lachlanelijah/data/rss';
       const container = document.getElementById('rym-container');
       try{
-        const res = await fetch(feedUrl);
-        if(!res.ok) throw new Error('Network response not ok');
-        const text = await res.text();
-        const doc = new DOMParser().parseFromString(text, 'application/xml');
-        const items = Array.from(doc.querySelectorAll('item')).slice(0,3);
-        if(items.length === 0) { container.textContent = 'No recent ratings found.'; return }
-        container.innerHTML = '';
-        items.forEach(it => {
-          const title = (it.querySelector('title') && it.querySelector('title').textContent) || '';
-          const link = (it.querySelector('link') && it.querySelector('link').textContent) || (it.querySelector('guid') && it.querySelector('guid').textContent) || '#';
-          // Example title: "Rated Twilight Zone by Multiple Artists 3.0 stars"
-          const m = title.match(/Rated\s+(.+?)\s+by\s+(.+?)\s+(\d+(?:\.\d)?)\s*stars/i);
-          let album = title; let artist = ''; let rating = '';
-          if(m){ album = m[1]; artist = m[2]; rating = m[3]; }
+        // prefer local cached JSON
+        let data = null;
+        try{
+          const r = await fetch(localUrl);
+          if(r.ok) data = await r.json();
+        }catch(e){}
 
+        if(!data){
+          // fallback to RSS (may be blocked by CORS)
+          const res = await fetch(feedUrl);
+          if(!res.ok) throw new Error('Network response not ok');
+          const text = await res.text();
+          const doc = new DOMParser().parseFromString(text, 'application/xml');
+          const items = Array.from(doc.querySelectorAll('item')).slice(0,20);
+          data = items.map(it => {
+            const title = (it.querySelector('title') && it.querySelector('title').textContent) || '';
+            const link = (it.querySelector('link') && it.querySelector('link').textContent) || (it.querySelector('guid') && it.querySelector('guid').textContent) || '#';
+            const m = title.match(/Rated\s+(.+?)\s+by\s+(.+?)\s+(\d+(?:\.\d)?)\s*stars/i);
+            if(m) return { album: m[1], artist: m[2], rating: m[3], link, title };
+            return { album: title, artist: '', rating: '', link, title };
+          });
+        }
+
+        if(!Array.isArray(data) || data.length === 0){ container.textContent = 'No recent ratings found.'; return }
+        container.innerHTML = '';
+        data.slice(0,3).forEach(it => {
+          const album = it.album || it.title || '';
+          const artist = it.artist || '';
+          const rating = it.rating || '';
+          const link = it.link || '#';
           const itemEl = document.createElement('div'); itemEl.className = 'rym-item';
           const a = document.createElement('a'); a.href = link; a.textContent = album; a.target = '_blank'; a.rel = 'noopener noreferrer';
           const meta = document.createElement('div'); meta.className = 'rym-meta'; meta.textContent = artist;
           const stars = document.createElement('div'); stars.className = 'rym-stars';
           stars.innerHTML = renderStars(rating) + (rating? (' <span style="color:var(--muted);font-weight:600; margin-left:6px">'+rating+'★</span>') : '');
-
           const left = document.createElement('div'); left.style.display = 'flex'; left.style.flexDirection = 'column'; left.appendChild(a); if(artist) left.appendChild(meta);
           itemEl.appendChild(left);
           itemEl.appendChild(stars);
