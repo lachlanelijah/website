@@ -1,134 +1,166 @@
 {
   "2025": [
     {
-      "author": "Bradbury, Ray",
+      "firstName": "Ray",
+      "lastName": "Bradbury",
       "title": "Fahrenheit 451"
     },
     {
-      "author": "Comer, John Mark",
+      "firstName": "John Mark",
+      "lastName": "Comer",
       "title": "Garden City"
     },
     {
-      "author": "Comer, John Mark",
+      "firstName": "John Mark",
+      "lastName": "Comer",
       "title": "The Ruthless Elimination of Hurry",
       "note": "re-read"
     },
     {
-      "author": "Kafka, Franz",
+      "firstName": "Franz",
+      "lastName": "Kafka",
       "title": "The Trial"
     },
     {
-      "author": "Kawakami, Mieko",
+      "firstName": "Mieko",
+      "lastName": "Kawakami",
       "title": "Heaven"
     },
     {
-      "author": "Kirino, Natsuo",
+      "firstName": "Natsuo",
+      "lastName": "Kirino",
       "title": "Out"
     },
     {
-      "author": "Lewis, C.S.",
+      "firstName": "C.S.",
+      "lastName": "Lewis",
       "title": "The Lion, the Witch, and the Wardrobe"
     },
     {
-      "author": "Mishima, Yukio",
+      "firstName": "Yukio",
+      "lastName": "Mishima",
       "title": "The Sailor Who Fell From Grace with the Sea"
     },
     {
-      "author": "Miura, Ayako",
+      "firstName": "Ayako",
+      "lastName": "Miura",
       "title": "Shiokari Pass"
     },
     {
-      "author": "Newport, Cal",
+      "firstName": "Cal",
+      "lastName": "Newport",
       "title": "Digital Minimalism",
       "note": "re-read"
     },
     {
-      "author": "Parker, Alli",
+      "firstName": "Alli",
+      "lastName": "Parker",
       "title": "At the Foot of the Cherry Tree"
     },
     {
-      "author": "Powley, Mark",
+      "firstName": "Mark",
+      "lastName": "Powley",
       "title": "Consumer Detox",
       "note": "re-read"
     },
     {
-      "author": "Rose, Reagan",
+      "firstName": "Reagan",
+      "lastName": "Rose",
       "title": "Redeeming Productivity"
     },
     {
-      "author": "Sanderson, Brandon",
+      "firstName": "Brandon",
+      "lastName": "Sanderson",
       "title": "The Alloy of Law"
     },
     {
-      "author": "Sanderson, Brandon",
+      "firstName": "Brandon",
+      "lastName": "Sanderson",
       "title": "Cytonic"
     },
     {
-      "author": "Sanderson, Brandon",
+      "firstName": "Brandon",
+      "lastName": "Sanderson",
       "title": "Dawnshard"
     },
     {
-      "author": "Sanderson, Brandon",
+      "firstName": "Brandon",
+      "lastName": "Sanderson",
       "title": "Edgedancer"
     },
     {
-      "author": "Sanderson, Brandon",
+      "firstName": "Brandon",
+      "lastName": "Sanderson",
       "title": "Elantris"
     },
     {
-      "author": "Sanderson, Brandon",
+      "firstName": "Brandon",
+      "lastName": "Sanderson",
       "title": "Oathbringer"
     },
     {
-      "author": "Sanderson, Brandon",
+      "firstName": "Brandon",
+      "lastName": "Sanderson",
       "title": "Rhythm of War"
     },
     {
-      "author": "Sanderson, Brandon",
+      "firstName": "Brandon",
+      "lastName": "Sanderson",
       "title": "Shadows of Self"
     },
     {
-      "author": "Sanderson, Brandon",
+      "firstName": "Brandon",
+      "lastName": "Sanderson",
       "title": "Skyward"
     },
     {
-      "author": "Sanderson, Brandon",
+      "firstName": "Brandon",
+      "lastName": "Sanderson",
       "title": "Starsight"
     },
     {
-      "author": "Sanderson, Brandon",
+      "firstName": "Brandon",
+      "lastName": "Sanderson",
       "title": "The Way of Kings"
     },
     {
-      "author": "Sanderson, Brandon",
+      "firstName": "Brandon",
+      "lastName": "Sanderson",
       "title": "Words of Radiance"
     },
     {
-      "author": "Sukegawa, Durian",
+      "firstName": "Durian",
+      "lastName": "Sukegawa",
       "title": "Sweet Bean Paste"
     },
     {
-      "author": "Tchaikovsky, Adrian",
+      "firstName": "Adrian",
+      "lastName": "Tchaikovsky",
       "title": "Children of Time"
     },
     {
-      "author": "Tchaikovsky, Adrian",
+      "firstName": "Adrian",
+      "lastName": "Tchaikovsky",
       "title": "Dogs of War"
     },
     {
-      "author": "Theocast",
+      "firstName": "Theocast",
+      "lastName": "",
       "title": "Rest"
     },
     {
-      "author": "Villodas, Rich",
+      "firstName": "Rich",
+      "lastName": "Villodas",
       "title": "The Deeply Formed Life"
     },
     {
-      "author": "Yoshimoto, Banana",
+      "firstName": "Banana",
+      "lastName": "Yoshimoto",
       "title": "Kitchen"
     },
     {
-      "author": "Zhang, Ling",
+      "firstName": "Ling",
+      "lastName": "Zhang",
       "title": "Where Waters Meet"
     },
     {
@@ -140,24 +172,29 @@
   ],
   "2026": [
     {
-      "author": "Clavell, James",
+      "firstName": "James",
+      "lastName": "Clavell",
       "title": "Shogun",
       "note": "re-read"
     },
     {
-      "author": "Dazai, Osamu",
+      "firstName": "Osamu",
+      "lastName": "Dazai",
       "title": "No Longer Human"
     },
     {
-      "author": "Keller, Timothy",
+      "firstName": "Timothy",
+      "lastName": "Keller",
       "title": "The Reason for God"
     },
     {
-      "author": "Sanderson, Brandon",
+      "firstName": "Brandon",
+      "lastName": "Sanderson",
       "title": "Defiant"
     },
     {
-      "author": "See, Lisa",
+      "firstName": "Lisa",
+      "lastName": "See",
       "title": "Lady Tan’s Circle of Women",
       "note": "re-read"
     }

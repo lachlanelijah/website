@@ -42,12 +42,11 @@ app.post('/api/books/add', async (req, res) => {
     }
 
     const booksPath = path.join(REPO_PATH, 'data', 'books.json');
-    let books = {};
+    let books = [];
     if (fs.existsSync(booksPath)) {
       books = JSON.parse(fs.readFileSync(booksPath, 'utf8'));
     }
-    if (!books[year]) books[year] = [];
-    books[year].push({ firstName, lastName, title, note });
+    books.push({ firstName, lastName, title, year, note });
     fs.writeFileSync(booksPath, JSON.stringify(books, null, 2));
     execFile('node', [path.join(__dirname, 'generate_reading_html.js')], (err, stdout, stderr) => {
       if (err) console.error('Error running generate_reading_html.js:', stderr);
@@ -64,7 +63,7 @@ app.post('/api/books/add', async (req, res) => {
 app.post('/api/books/list', async (req, res) => {
   try {
     const booksPath = path.join(REPO_PATH, 'data', 'books.json');
-    let books = {};
+    let books = [];
     if (fs.existsSync(booksPath)) {
       books = JSON.parse(fs.readFileSync(booksPath, 'utf8'));
     }
@@ -77,13 +76,12 @@ app.post('/api/books/list', async (req, res) => {
 // ============ BOOKS UPDATE/DELETE ============
 app.post('/api/books/update', async (req, res) => {
   try {
-    const { year, oldFirstName, oldLastName, oldTitle, firstName, lastName, title, note } = req.body;
+    const { oldFirstName, oldLastName, oldTitle, firstName, lastName, title, year, note } = req.body;
     const booksPath = path.join(REPO_PATH, 'data', 'books.json');
     let books = JSON.parse(fs.readFileSync(booksPath, 'utf8'));
-    if (!books[year]) return res.status(404).json({ error: 'Year not found' });
-    const idx = books[year].findIndex(b => b.firstName === oldFirstName && b.lastName === oldLastName && b.title === oldTitle);
+    const idx = books.findIndex(b => b.firstName === oldFirstName && b.lastName === oldLastName && b.title === oldTitle);
     if (idx === -1) return res.status(404).json({ error: 'Book not found' });
-    books[year][idx] = { firstName, lastName, title, note };
+    books[idx] = { firstName, lastName, title, year, note };
     fs.writeFileSync(booksPath, JSON.stringify(books, null, 2));
     execFile('node', [path.join(__dirname, 'generate_reading_html.js')], () => {});
     await commitChanges(`Update book: ${oldTitle} to ${title}`);
@@ -94,11 +92,10 @@ app.post('/api/books/update', async (req, res) => {
 });
 app.post('/api/books/delete', async (req, res) => {
   try {
-    const { year, firstName, lastName, title } = req.body;
+    const { firstName, lastName, title } = req.body;
     const booksPath = path.join(REPO_PATH, 'data', 'books.json');
     let books = JSON.parse(fs.readFileSync(booksPath, 'utf8'));
-    if (!books[year]) return res.status(404).json({ error: 'Year not found' });
-    books[year] = books[year].filter(b => !(b.firstName === firstName && b.lastName === lastName && b.title === title));
+    books = books.filter(b => !(b.firstName === firstName && b.lastName === lastName && b.title === title));
     fs.writeFileSync(booksPath, JSON.stringify(books, null, 2));
     execFile('node', [path.join(__dirname, 'generate_reading_html.js')], () => {});
     await commitChanges(`Delete book: ${title}`);
@@ -112,29 +109,25 @@ app.post('/api/books/delete', async (req, res) => {
 
 app.post('/api/concerts/add', async (req, res) => {
   try {
-    const { artist, date, venue, songs = [] } = req.body;
+    const { band, date, venue, support = [], setlist = { source: '', url: '', songs: [] } } = req.body;
 
-    if (!artist || !date || !venue) {
-      return res.status(400).json({ error: 'Artist, date, and venue are required' });
+    if (!band || !date || !venue) {
+      return res.status(400).json({ error: 'Band, date, and venue are required' });
     }
 
-    const setlistPath = path.join(REPO_PATH, 'data', 'setlists.json');
-    let data = JSON.parse(fs.readFileSync(setlistPath, 'utf8'));
-
-    const key = `${artist}|${date}`;
-    data[key] = {
-      source: '',
-      url: '',
-      songs: Array.isArray(songs) ? songs : songs.split(',').map(s => s.trim())
-    };
-
-    fs.writeFileSync(setlistPath, JSON.stringify(data, null, 2));
+    const concertsPath = path.join(REPO_PATH, 'data', 'concerts.json');
+    let concerts = [];
+    if (fs.existsSync(concertsPath)) {
+      concerts = JSON.parse(fs.readFileSync(concertsPath, 'utf8'));
+    }
+    concerts.push({ band, date, venue, support, setlist });
+    fs.writeFileSync(concertsPath, JSON.stringify(concerts, null, 2));
     execFile('node', [path.join(__dirname, 'generate_concerts_html.js')], (err, stdout, stderr) => {
       if (err) console.error('Error running generate_concerts_html.js:', stderr);
       else console.log(stdout.trim());
     });
-    await commitChanges(`Add concert: ${artist} on ${date} at ${venue}`);
-    res.json({ success: true, message: `Added ${artist} concert` });
+    await commitChanges(`Add concert: ${band} on ${date} at ${venue}`);
+    res.json({ success: true, message: `Added ${band} concert` });
   } catch (error) {
     console.error('Error adding concert:', error);
     res.status(500).json({ error: error.message });
@@ -143,19 +136,11 @@ app.post('/api/concerts/add', async (req, res) => {
 
 app.post('/api/concerts/list', async (req, res) => {
   try {
-    const setlistPath = path.join(REPO_PATH, 'data', 'setlists.json');
-    const data = JSON.parse(fs.readFileSync(setlistPath, 'utf8'));
-
-    const concerts = Object.entries(data).map(([key, value]) => {
-      const [artist, date] = key.split('|');
-      return {
-        artist,
-        date,
-        songs: value.songs,
-        url: value.url
-      };
-    });
-
+    const concertsPath = path.join(REPO_PATH, 'data', 'concerts.json');
+    let concerts = [];
+    if (fs.existsSync(concertsPath)) {
+      concerts = JSON.parse(fs.readFileSync(concertsPath, 'utf8'));
+    }
     res.json({ concerts });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -165,17 +150,15 @@ app.post('/api/concerts/list', async (req, res) => {
 // ============ CONCERTS UPDATE/DELETE ============
 app.post('/api/concerts/update', async (req, res) => {
   try {
-    const { oldArtist, oldDate, artist, date, venue, songs } = req.body;
-    const setlistPath = path.join(REPO_PATH, 'data', 'setlists.json');
-    let data = JSON.parse(fs.readFileSync(setlistPath, 'utf8'));
-    const oldKey = `${oldArtist}|${oldDate}`;
-    if (!data[oldKey]) return res.status(404).json({ error: 'Concert not found' });
-    delete data[oldKey];
-    const newKey = `${artist}|${date}`;
-    data[newKey] = { source: '', url: '', songs, venue };
-    fs.writeFileSync(setlistPath, JSON.stringify(data, null, 2));
+    const { oldBand, oldDate, band, date, venue, support = [], setlist = { source: '', url: '', songs: [] } } = req.body;
+    const concertsPath = path.join(REPO_PATH, 'data', 'concerts.json');
+    let concerts = JSON.parse(fs.readFileSync(concertsPath, 'utf8'));
+    const idx = concerts.findIndex(c => c.band === oldBand && c.date === oldDate);
+    if (idx === -1) return res.status(404).json({ error: 'Concert not found' });
+    concerts[idx] = { band, date, venue, support, setlist };
+    fs.writeFileSync(concertsPath, JSON.stringify(concerts, null, 2));
     execFile('node', [path.join(__dirname, 'generate_concerts_html.js')], () => {});
-    await commitChanges(`Update concert: ${oldArtist} ${oldDate}`);
+    await commitChanges(`Update concert: ${oldBand} ${oldDate}`);
     res.json({ success: true });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -183,15 +166,43 @@ app.post('/api/concerts/update', async (req, res) => {
 });
 app.post('/api/concerts/delete', async (req, res) => {
   try {
-    const { artist, date } = req.body;
-    const setlistPath = path.join(REPO_PATH, 'data', 'setlists.json');
-    let data = JSON.parse(fs.readFileSync(setlistPath, 'utf8'));
-    const key = `${artist}|${date}`;
-    if (!data[key]) return res.status(404).json({ error: 'Concert not found' });
-    delete data[key];
-    fs.writeFileSync(setlistPath, JSON.stringify(data, null, 2));
+    const { band, date } = req.body;
+    const concertsPath = path.join(REPO_PATH, 'data', 'concerts.json');
+    let concerts = JSON.parse(fs.readFileSync(concertsPath, 'utf8'));
+    concerts = concerts.filter(c => !(c.band === band && c.date === date));
+    fs.writeFileSync(concertsPath, JSON.stringify(concerts, null, 2));
     execFile('node', [path.join(__dirname, 'generate_concerts_html.js')], () => {});
-    await commitChanges(`Delete concert: ${artist} ${date}`);
+    await commitChanges(`Delete concert: ${band} ${date}`);
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/concerts/update-setlist', async (req, res) => {
+  try {
+    const { band, date, setlist } = req.body;
+    if (!band || !date || !Array.isArray(setlist)) {
+      return res.status(400).json({ error: 'Band, date, and setlist array are required' });
+    }
+    const concertsPath = path.join(REPO_PATH, 'data', 'concerts.json');
+    let concerts = {};
+    if (fs.existsSync(concertsPath)) {
+      concerts = JSON.parse(fs.readFileSync(concertsPath, 'utf8'));
+    }
+    let updated = false;
+    Object.keys(concerts).forEach(year => {
+      concerts[year].forEach(concert => {
+        if (concert.band === band && concert.date === date) {
+          concert.setlist = setlist;
+          updated = true;
+        }
+      });
+    });
+    if (!updated) {
+      return res.status(404).json({ error: 'Concert not found' });
+    }
+    fs.writeFileSync(concertsPath, JSON.stringify(concerts, null, 2));
     res.json({ success: true });
   } catch (error) {
     res.status(500).json({ error: error.message });

@@ -22,35 +22,34 @@ const afterFooter = html.slice(footerIndex);
 
 // Generate new book sections
 let sections = '';
+// Sort years descending
 Object.keys(books).sort((a, b) => b - a).forEach(year => {
   sections += `  <section>\n    <h2>&gt; Read — ${year}</h2>\n`;
-  // Group books by last name, then first name
-  const grouped = {};
-  books[year].forEach(book => {
-    const last = book.lastName || '';
-    const first = book.firstName || '';
-    if (!grouped[last]) grouped[last] = {};
-    if (!grouped[last][first]) grouped[last][first] = [];
-    grouped[last][first].push(book);
+  // Sort books by last name, then title
+  const sortedBooks = books[year].slice().sort((a, b) => {
+    const lastA = (a.lastName || '').toLowerCase();
+    const lastB = (b.lastName || '').toLowerCase();
+    if (lastA < lastB) return -1;
+    if (lastA > lastB) return 1;
+    const titleA = (a.title || '').toLowerCase();
+    const titleB = (b.title || '').toLowerCase();
+    if (titleA < titleB) return -1;
+    if (titleA > titleB) return 1;
+    return 0;
   });
-  const sortedLast = Object.keys(grouped).sort();
-  sortedLast.forEach(last => {
-    const sortedFirst = Object.keys(grouped[last]).sort();
-    sortedFirst.forEach(first => {
-      sections += `    <h3>${last}, ${first}</h3>\n    <ol>\n`;
-      grouped[last][first].sort((a, b) => (a.title || '').localeCompare(b.title || '')).forEach(book => {
-        const note = book.note ? ` (${book.note})` : '';
-        sections += `      <li><em>${book.title}</em>${note}</li>\n`;
-      });
-      sections += '    </ol>\n';
-    });
+  sortedBooks.forEach(book => {
+    const note = book.note ? ` (${book.note})` : '';
+    const authorName = `${book.firstName}${book.lastName ? ' ' + book.lastName : ''}`;
+    sections += `<div class="book-title"><em>${book.title}</em>${note}</div>`;
+    if (authorName.trim()) {
+      sections += `<div class="author-muted" style="margin-left:0.9em; padding-left:1em">${authorName}</div>`;
+    }
   });
   sections += '  </section>\n';
 });
+html = beforeFooter + sections + afterFooter;
 
-// Rebuild HTML
-const newHtml = beforeFooter + sections + afterFooter;
+// Write reading.html
+fs.writeFileSync(htmlPath, html, 'utf8');
 
-// Write updated reading.html
-fs.writeFileSync(htmlPath, newHtml);
-console.log('reading.html updated from books.json');
+console.log('Reading book sections generated successfully!');

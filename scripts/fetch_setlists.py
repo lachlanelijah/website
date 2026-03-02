@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
-"""Fetch setlists from setlist.fm for artists listed in concerts.html.
-
+"""Fetch setlists from setlist.fm for artists listed in concerts.json and merge into concerts.json.
 Usage: set the env var SETLISTFM_API_KEY and run this script from repo root.
-It will write to data/setlists.json mapping artist -> {source, url, songs: [...]}
+It will update data/concerts.json with setlist info for each concert.
 """
 import os
 import re
@@ -12,6 +11,7 @@ import ssl
 import argparse
 from urllib.parse import quote
 from urllib.request import Request, urlopen
+import time
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--insecure', action='store_true', help='Disable SSL verification (local testing only)')
@@ -26,36 +26,15 @@ CTX = None
 if args.insecure:
     CTX = ssl._create_unverified_context()
 
-HTML_PATH = 'concerts.html'
-OUT_PATH = 'data/setlists.json'
+CONCERTS_PATH = 'data/concerts.json'
 
 def parse_date_to_ddmmyyyy(s):
     s = s.strip()
-    # accept formats like 19/9/17 or 2019-09-19 etc.
-    m = re.match(r"(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})", s)
+    m = re.match(r"(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})", s)
     if not m:
         return None
-    d, mth, y = m.groups()
-    d = int(d); mth = int(mth); y = int(y)
-    if y < 100:
-        y = 2000 + y if y < 70 else 1900 + y
-    return f"{d:02d}-{mth:02d}-{y:04d}"
-
-
-def extract_entries(html):
-    # Return list of (artist, date_dd-mm-yyyy)
-    parts = html.split('<div class="card">')
-    entries = []
-    for part in parts[1:]:
-        artist_m = re.search(r'<strong>([^<]+)</strong>', part)
-        if not artist_m:
-            continue
-        artist = artist_m.group(1).strip()
-        date_m = re.search(r'Date:\s*([^<—\n]+)', part)
-        date_raw = date_m.group(1).strip() if date_m else ''
-        date_norm = parse_date_to_ddmmyyyy(date_raw) if date_raw else None
-        entries.append((artist, date_norm))
-    return entries
+    y, mth, d = m.groups()
+    return f"{d.zfill(2)}-{mth.zfill(2)}-{y}"
 
 def fetch_setlist_for(artist, date_dd_mm_yyyy=None):
     q = quote(artist)
@@ -67,7 +46,6 @@ def fetch_setlist_for(artist, date_dd_mm_yyyy=None):
         'Accept': 'application/json',
         'User-Agent': 'lachie-site-fetcher/1.0'
     })
-    # pass SSL context when testing with --insecure
     if CTX is not None:
         with urlopen(req, timeout=30, context=CTX) as resp:
             if resp.status != 200:
@@ -78,12 +56,8 @@ def fetch_setlist_for(artist, date_dd_mm_yyyy=None):
             if resp.status != 200:
                 raise RuntimeError(f'HTTP {resp.status}')
             return json.load(resp)
-        if resp.status != 200:
-            raise RuntimeError(f'HTTP {resp.status}')
-        return json.load(resp)
 
 def pick_songs_from_setlist(setlist_json):
-    # try to find the first setlist and extract song names in order
     sls = setlist_json.get('setlist', [])
     if not sls:
         return None
@@ -102,40 +76,27 @@ def pick_songs_from_setlist(setlist_json):
     }
 
 def main():
-    with open(HTML_PATH, 'r', encoding='utf8') as f:
-        html = f.read()
-    entries = extract_entries(html)
-    out = {}
-    seen = set()
-    import time
-    for artist, date in entries:
-        key = f"{artist}|{date or ''}"
-        if key in seen:
-            continue
-        seen.add(key)
+    with open(CONCERTS_PATH, 'r', encoding='utf8') as f:
+        concerts = json.load(f)
+    for concert in concerts:
+        artist = concert.get('band')
+        date_raw = concert.get('date')
+        date_norm = parse_date_to_ddmmyyyy(date_raw) if date_raw else None
+        print('Fetching setlist for', artist, date_norm)
         try:
-            print('Fetching setlist for', artist, date)
-            js = fetch_setlist_for(artist, date)
+            js = fetch_setlist_for(artist, date_norm)
             parsed = pick_songs_from_setlist(js) or {}
-            out[key] = parsed
+            concert['setlist'] = {
+                'source': parsed.get('source', ''),
+                'url': parsed.get('url', ''),
+                'songs': parsed.get('songs', [])
+            }
         except Exception as e:
-            # handle rate limiting by sleeping and retrying once
-            print('Error for', artist, date, e, file=sys.stderr)
-            if hasattr(e, 'code') and e.code == 429:
-                print('Rate limited, sleeping 2s and retrying...')
-                time.sleep(2)
-                try:
-                    js = fetch_setlist_for(artist, date)
-                    parsed = pick_songs_from_setlist(js) or {}
-                    out[key] = parsed
-                    continue
-                except Exception as e2:
-                    print('Retry failed for', artist, date, e2, file=sys.stderr)
-            out[key] = {}
+            print('Error for', artist, date_norm, e, file=sys.stderr)
+            concert['setlist'] = {'source': '', 'url': '', 'songs': []}
         time.sleep(1)
-    os.makedirs(os.path.dirname(OUT_PATH) or '.', exist_ok=True)
-    with open(OUT_PATH, 'w', encoding='utf8') as f:
-        json.dump(out, f, ensure_ascii=False, indent=2)
+    with open(CONCERTS_PATH, 'w', encoding='utf8') as f:
+        json.dump(concerts, f, ensure_ascii=False, indent=2)
 
 if __name__ == '__main__':
     main()

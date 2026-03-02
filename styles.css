@@ -1,3 +1,27 @@
+div.book-title {
+  margin: 8px 0 2px 0;
+  font-size: 15px;
+  color: var(--text);
+}
+div.author-muted {
+  font-size: 11px;
+  color: var(--muted);
+  margin: 2px 0 2px 18px;
+  padding-left: 16px;
+}
+div.seasons-list {
+  font-size: 11px;
+  color: var(--muted);
+  margin: 2px 0 2px 18px;
+  padding-left: 16px;
+  font-style: normal;
+}
+div.show-title {
+  font-size: 15px;
+  color: var(--text);
+  margin: 8px 0 2px 0;
+  font-style: italic;
+}
 :root{
   --bg:#010101;
   --panel:#081014;
@@ -36,13 +60,13 @@ section{margin:18px 0;padding:12px;border-radius:6px;background:rgba(0,0,0,0.02)
 h2{font-size:13px;margin:0 0 8px 0;color:var(--accent);}
 ul{margin:0;padding-left:20px}
 li{margin:6px 0}
-ul.seasons-list {
+ul.seasons-list, ul.author-list {
   font-size: 11px;
   color: var(--muted);
   margin: 2px 0 2px 18px;
   padding-left: 16px;
 }
-ul.seasons-list li {
+ul.seasons-list li, ul.author-list li {
   font-size: 11px;
   color: var(--muted);
   margin: 2px 0;
