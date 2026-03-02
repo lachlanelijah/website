@@ -4,6 +4,7 @@ const path = require('path');
 require('dotenv').config();
 const { Octokit } = require('octokit');
 const simpleGit = require('simple-git');
+const { execFile } = require('child_process');
 
 const app = express();
 app.use(express.json());
@@ -40,45 +41,19 @@ app.post('/api/books/add', async (req, res) => {
       return res.status(400).json({ error: 'Author and title are required' });
     }
 
-    const readingPath = path.join(REPO_PATH, 'reading.html');
-    let content = fs.readFileSync(readingPath, 'utf8');
-
-    // Create the book entry HTML
-    const bookEntry = note
-      ? `<li><strong>${author}</strong> — <em>${title}</em> (${note})</li>`
-      : `<li><strong>${author}</strong> — <em>${title}</em></li>`;
-
-    // Find the section for the given year
-    const yearHeading = `<h2>&gt; Read — ${year}</h2>`;
-
-    if (!content.includes(yearHeading)) {
-      // Create new year section if it doesn't exist
-      const newSection = `
-    <section>
-      <h2>&gt; Read — ${year}</h2>
-      <ol>
-        ${bookEntry}
-      </ol>
-    </section>`;
-
-      content = content.replace(
-        '    <footer>',
-        newSection + '\n    <footer>'
-      );
-    } else {
-      // Add to existing year section
-      const regex = new RegExp(
-        `(${yearHeading}\\s*<ol>)([\\s\\S]*?)(<\\/ol>)`,
-        'g'
-      );
-      content = content.replace(regex, (match, opening, list, closing) => {
-        return opening + '\n        ' + bookEntry + list + closing;
-      });
+    const booksPath = path.join(REPO_PATH, 'data', 'books.json');
+    let books = {};
+    if (fs.existsSync(booksPath)) {
+      books = JSON.parse(fs.readFileSync(booksPath, 'utf8'));
     }
-
-    fs.writeFileSync(readingPath, content);
+    if (!books[year]) books[year] = [];
+    books[year].push({ author, title, note });
+    fs.writeFileSync(booksPath, JSON.stringify(books, null, 2));
+    execFile('node', [path.join(__dirname, 'generate_reading_html.js')], (err, stdout, stderr) => {
+      if (err) console.error('Error running generate_reading_html.js:', stderr);
+      else console.log(stdout.trim());
+    });
     await commitChanges(`Add book: ${title} by ${author}`);
-
     res.json({ success: true, message: `Added "${title}" to ${year}` });
   } catch (error) {
     console.error('Error adding book:', error);
@@ -88,22 +63,11 @@ app.post('/api/books/add', async (req, res) => {
 
 app.post('/api/books/list', async (req, res) => {
   try {
-    const readingPath = path.join(REPO_PATH, 'reading.html');
-    const content = fs.readFileSync(readingPath, 'utf8');
-
-    // Extract all book entries
-    const bookRegex = /<li><strong>(.+?)<\/strong> — <em>(.+?)<\/em>(.+?)?<\/li>/g;
-    const books = [];
-    let match;
-
-    while ((match = bookRegex.exec(content)) !== null) {
-      books.push({
-        author: match[1],
-        title: match[2],
-        note: match[3] ? match[3].trim() : ''
-      });
+    const booksPath = path.join(REPO_PATH, 'data', 'books.json');
+    let books = {};
+    if (fs.existsSync(booksPath)) {
+      books = JSON.parse(fs.readFileSync(booksPath, 'utf8'));
     }
-
     res.json({ books });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -131,8 +95,11 @@ app.post('/api/concerts/add', async (req, res) => {
     };
 
     fs.writeFileSync(setlistPath, JSON.stringify(data, null, 2));
+    execFile('node', [path.join(__dirname, 'generate_concerts_html.js')], (err, stdout, stderr) => {
+      if (err) console.error('Error running generate_concerts_html.js:', stderr);
+      else console.log(stdout.trim());
+    });
     await commitChanges(`Add concert: ${artist} on ${date} at ${venue}`);
-
     res.json({ success: true, message: `Added ${artist} concert` });
   } catch (error) {
     console.error('Error adding concert:', error);
@@ -162,6 +129,51 @@ app.post('/api/concerts/list', async (req, res) => {
 });
 
 // ============ TV SHOWS ENDPOINTS ============
+// ============ TRAVEL ENDPOINTS ============
+
+app.post('/api/travel/add', async (req, res) => {
+  try {
+    const { type = 'major', title, link = '', extra = '' } = req.body;
+    const travelPath = path.join(REPO_PATH, 'data', 'travel.json');
+    let travel = {};
+    if (fs.existsSync(travelPath)) {
+      travel = JSON.parse(fs.readFileSync(travelPath, 'utf8'));
+    }
+    if (type === 'upcoming') {
+      if (!travel.upcoming) travel.upcoming = [];
+      travel.upcoming.push(title);
+    } else {
+      if (!travel.major) travel.major = [];
+      const entry = { title };
+      if (link) entry.link = link;
+      if (extra) entry.extra = extra;
+      travel.major.push(entry);
+    }
+    fs.writeFileSync(travelPath, JSON.stringify(travel, null, 2));
+    execFile('node', [path.join(__dirname, 'generate_travel_html.js')], (err, stdout, stderr) => {
+      if (err) console.error('Error running generate_travel_html.js:', stderr);
+      else console.log(stdout.trim());
+    });
+    await commitChanges(`Add travel: ${title}`);
+    res.json({ success: true, message: `Added travel entry: ${title}` });
+  } catch (error) {
+    console.error('Error adding travel:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/travel/list', async (req, res) => {
+  try {
+    const travelPath = path.join(REPO_PATH, 'data', 'travel.json');
+    let travel = {};
+    if (fs.existsSync(travelPath)) {
+      travel = JSON.parse(fs.readFileSync(travelPath, 'utf8'));
+    }
+    res.json(travel);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
 
 app.post('/api/tv/add', async (req, res) => {
   try {
@@ -171,49 +183,24 @@ app.post('/api/tv/add', async (req, res) => {
       return res.status(400).json({ error: 'Show name is required' });
     }
 
-    const tvPath = path.join(REPO_PATH, 'tv.html');
-    let content = fs.readFileSync(tvPath, 'utf8');
-
-    const sectionKey = type === 'watched' ? `Watched — ${year}` : 'To Watch';
-    const heading = `<h2>&gt; ${sectionKey}</h2>`;
-
-    if (type === 'watched') {
-      // Add to watched section
-      if (!content.includes(heading)) {
-        const newSection = `
-    <section>
-      <h2>&gt; ${sectionKey}</h2>
-      <ul>
-        <li>${show}</li>
-      </ul>
-    </section>`;
-        content = content.replace(
-          '    <footer>',
-          newSection + '\n    <footer>'
-        );
-      } else {
-        const regex = new RegExp(
-          `(${heading}\\s*<ul>)([\\s\\S]*?)(<\\/ul>)`,
-          'g'
-        );
-        content = content.replace(regex, (match, opening, list, closing) => {
-          return opening + '\n        <li>' + show + '</li>' + list + closing;
-        });
-      }
-    } else {
-      // Add to "To Watch" section
-      const regex = new RegExp(
-        `(<div class="card">.*?<\\/div>)([\\s\\S]*?)(<\\/div>\\s*<\\/section>)`,
-        'g'
-      );
-      content = content.replace(regex, (match, firstCard, rest, closing) => {
-        return firstCard + '\n        <div class="card">' + show + '</div>' + rest + closing;
-      });
+    const tvPath = path.join(REPO_PATH, 'data', 'tv.json');
+    let tv = {};
+    if (fs.existsSync(tvPath)) {
+      tv = JSON.parse(fs.readFileSync(tvPath, 'utf8'));
     }
-
-    fs.writeFileSync(tvPath, content);
+    if (type === 'watched') {
+      if (!tv[year]) tv[year] = [];
+      tv[year].push(show);
+    } else {
+      if (!tv['toWatch']) tv['toWatch'] = [];
+      tv['toWatch'].push(show);
+    }
+    fs.writeFileSync(tvPath, JSON.stringify(tv, null, 2));
+    execFile('node', [path.join(__dirname, 'generate_tv_html.js')], (err, stdout, stderr) => {
+      if (err) console.error('Error running generate_tv_html.js:', stderr);
+      else console.log(stdout.trim());
+    });
     await commitChanges(`Add TV show: ${show}`);
-
     res.json({ success: true, message: `Added "${show}"` });
   } catch (error) {
     console.error('Error adding TV show:', error);
@@ -223,27 +210,12 @@ app.post('/api/tv/add', async (req, res) => {
 
 app.post('/api/tv/list', async (req, res) => {
   try {
-    const tvPath = path.join(REPO_PATH, 'tv.html');
-    const content = fs.readFileSync(tvPath, 'utf8');
-
-    // Extract shows from list items
-    const showRegex = /<li>(.+?)<\/li>/g;
-    const shows = [];
-    let match;
-
-    while ((match = showRegex.exec(content)) !== null) {
-      shows.push(match[1]);
+    const tvPath = path.join(REPO_PATH, 'data', 'tv.json');
+    let tv = {};
+    if (fs.existsSync(tvPath)) {
+      tv = JSON.parse(fs.readFileSync(tvPath, 'utf8'));
     }
-
-    // Extract "To Watch" shows from cards
-    const cardRegex = /<div class="card">(.+?)<\/div>/g;
-    const toWatch = [];
-
-    while ((match = cardRegex.exec(content)) !== null) {
-      toWatch.push(match[1]);
-    }
-
-    res.json({ watched: shows, toWatch });
+    res.json(tv);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -297,6 +269,13 @@ async function commitChanges(message) {
     await git.commit(message);
 
     console.log(`Committed: ${message}`);
+    // Automatically push to origin main
+    try {
+      await git.push('origin', 'main')
+      console.log('Pushed to origin main')
+    } catch (pushErr) {
+      console.error('Git push error:', pushErr.message)
+    }
     return { success: true, message };
   } catch (error) {
     console.error('Git commit error:', error.message);
